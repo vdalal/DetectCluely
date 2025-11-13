@@ -5,7 +5,10 @@ import sys
 class TestOverlay:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Overlay Test Window")
+        self.root.title("Overlay Test Window - Control Panel")
+        
+        # Keep control panel always on top
+        self.root.attributes('-topmost', True)
         
         # Control panel
         control_frame = tk.Frame(self.root, padx=10, pady=10)
@@ -98,6 +101,9 @@ class TestOverlay:
         """Create an overlay window with specified properties."""
         overlay = tk.Toplevel(self.root)
         
+        # Important: Don't let test overlays block the control panel
+        overlay.attributes('-topmost', False)  # Start as not topmost
+        
         # Set title
         if self.show_title_var.get():
             overlay.title("Test Overlay")
@@ -112,50 +118,57 @@ class TestOverlay:
         }
         width, height = sizes[self.size_var.get()]
         
-        # Center on screen
+        # Position offset from center to avoid covering control panel
         screen_width = overlay.winfo_screenwidth()
         screen_height = overlay.winfo_screenheight()
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
+        x = (screen_width - width) // 2 + len(self.overlays) * 30  # Offset each overlay
+        y = (screen_height - height) // 2 + len(self.overlays) * 30
         overlay.geometry(f"{width}x{height}+{x}+{y}")
         
         # Set transparency
         alpha_value = self.alpha_var.get() / 255.0
         overlay.attributes('-alpha', alpha_value)
         
-        # Set topmost
-        if self.topmost_var.get():
-            overlay.attributes('-topmost', True)
-        
         # Add visual content
         frame = tk.Frame(overlay, bg="#FF5722")
         frame.pack(fill="both", expand=True)
         
-        label = tk.Label(frame, text="TEST OVERLAY\n\nThis window should be detected\nby the overlay detector",
+        label = tk.Label(frame, text=f"TEST OVERLAY #{len(self.overlays) + 1}\n\nThis window should be detected\nby the overlay detector",
                         font=("Arial", 16, "bold"), bg="#FF5722", fg="white")
         label.pack(expand=True)
         
         close_btn = tk.Button(frame, text="Close This Overlay", 
                               command=lambda: self.close_overlay(overlay),
-                              bg="white", fg="#FF5722", padx=10, pady=5)
+                              bg="white", fg="#FF5722", padx=10, pady=5, font=("Arial", 10, "bold"))
         close_btn.pack(pady=20)
         
-        # Apply click-through on Windows
+        # Store overlay reference first
+        self.overlays.append(overlay)
+        
+        # Apply topmost AFTER adding to list (so control panel stays above)
+        if self.topmost_var.get():
+            overlay.after(100, lambda: overlay.attributes('-topmost', True))
+        
+        # Apply click-through on Windows LAST
         if self.clickthrough_var.get() and sys.platform == "win32":
             try:
                 import win32gui
                 import win32con
+                overlay.update()  # Ensure window is created
                 hwnd = overlay.winfo_id()
                 extended_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
                 win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, 
                                       extended_style | win32con.WS_EX_TRANSPARENT | win32con.WS_EX_LAYERED)
+                # Refresh control panel to top
+                self.root.lift()
+                self.root.attributes('-topmost', True)
                 self.status_label.config(text="✓ Click-through overlay created", fg="green")
             except Exception as e:
                 self.status_label.config(text=f"⚠ Click-through failed: {e}", fg="orange")
         else:
+            # Ensure control panel stays on top
+            self.root.lift()
             self.status_label.config(text=f"✓ Overlay created (alpha={self.alpha_var.get()})", fg="green")
-        
-        self.overlays.append(overlay)
     
     def close_overlay(self, overlay):
         """Close a specific overlay."""
@@ -166,10 +179,17 @@ class TestOverlay:
     
     def close_all_overlays(self):
         """Close all overlay windows."""
+        count = len(self.overlays)
         for overlay in self.overlays[:]:
-            overlay.destroy()
+            try:
+                overlay.destroy()
+            except:
+                pass  # Window might already be destroyed
         self.overlays.clear()
-        self.status_label.config(text="All overlays closed", fg="blue")
+        self.status_label.config(text=f"All {count} overlays closed", fg="blue")
+        # Ensure control panel is visible
+        self.root.lift()
+        self.root.focus_force()
     
     def on_close(self):
         """Handle window close event."""
