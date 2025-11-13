@@ -162,6 +162,9 @@ def monitor_overlays(interval=2):
                             print(f"    • {reason}")
                     print("\n" + "=" * 80)
                     last_count = len(overlays)
+                else:
+                    # Overlay still present, just update timestamp
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Still detecting {len(overlays)} suspicious overlay(s)", end='\r')
             else:
                 if last_count > 0:
                     print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ✓ All suspicious overlays cleared")
