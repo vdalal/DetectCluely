@@ -133,14 +133,22 @@ class TestOverlay:
         frame = tk.Frame(overlay, bg="#FF5722")
         frame.pack(fill="both", expand=True)
         
-        label = tk.Label(frame, text=f"TEST OVERLAY #{len(self.overlays) + 1}\n\nThis window should be detected\nby the overlay detector",
+        # Add appropriate message based on click-through setting
+        if self.clickthrough_var.get():
+            message = f"TEST OVERLAY #{len(self.overlays) + 1}\n\nClick-through enabled\nClose from control panel only"
+        else:
+            message = f"TEST OVERLAY #{len(self.overlays) + 1}\n\nThis window should be detected\nby the overlay detector"
+        
+        label = tk.Label(frame, text=message,
                         font=("Arial", 16, "bold"), bg="#FF5722", fg="white")
         label.pack(expand=True)
         
-        close_btn = tk.Button(frame, text="Close This Overlay", 
-                              command=lambda: self.close_overlay(overlay),
-                              bg="white", fg="#FF5722", padx=10, pady=5, font=("Arial", 10, "bold"))
-        close_btn.pack(pady=20)
+        # Only show close button if NOT click-through (button won't work with click-through)
+        if not self.clickthrough_var.get():
+            close_btn = tk.Button(frame, text="Close This Overlay", 
+                                  command=lambda: self.close_overlay(overlay),
+                                  bg="white", fg="#FF5722", padx=10, pady=5, font=("Arial", 10, "bold"))
+            close_btn.pack(pady=20)
         
         # Store overlay reference first
         self.overlays.append(overlay)
